@@ -39,21 +39,21 @@ import csv
 #              ))
 #              ^
 # --------------------------
-alg_steps = 200000
+alg_steps = 100000
 
 config = dict(
-    n_tasks=5,
+    n_tasks=3,
     n=40,
     k=3,
     alpha=0.1,
     offset=0,
     D=-1,  # -1 for infinite data
     width=100,
-    depth=2,
+    depth=5,
     activation="ReLU",
     steps=alg_steps,  # 25000
-    batch_size=128,
-    lr=1e-2,
+    batch_size=1024,
+    lr=1e-4,
     weight_decay=0.005,
     test_points=30000,
     test_points_per_task=1000,
@@ -68,7 +68,7 @@ config = dict(
     save_model=True,
     save_model_path="models",
     save_task_path="tasks",
-    save_model_name="n_tasks_5",
+    save_model_name="n_tasks_3_full_train_width_100_depth_5",
     seed=0,
 )
 
@@ -143,7 +143,7 @@ class FastTensorDataLoader:
         return self.n_batches
 
 
-def get_batch(n_tasks, n, Ss, codes, sizes, device="cpu", dtype=torch.float32):
+def get_standard_multitask_batch(n_tasks, n, Ss, codes, sizes, device="cpu", dtype=torch.float32):
     """Creates batch.
 
     Parameters
@@ -258,7 +258,10 @@ def save_model_weights(model: torch.nn.Sequential, relative_path: str, save_file
     return
 
 def save_task(Ss: list, relative_path: str, save_file: str):
-    with open (f'{relative_path}/{save_file}.csv','w',newline = '') as csvfile:
+    dirname = os.path.dirname(os.path.abspath(inspect.stack()[0][1]))
+    save_model_path = f"{relative_path}/{save_file}.csv"
+    file_name = os.path.join(dirname, save_model_path)
+    with open (file_name,'w',newline = '') as csvfile:
         my_writer = csv.writer(csvfile, delimiter = ' ')
         my_writer.writerows(Ss)
 
@@ -342,13 +345,13 @@ def run(
             ),
         )
         hist, _ = np.histogram(samples, bins=n_tasks, range=(0, n_tasks - 1))
-        train_x, train_y = get_batch(
+        train_x, train_y = get_standard_multitask_batch(
             n_tasks=n_tasks,
             n=n,
             Ss=Ss,
             codes=list(range(n_tasks)),
             sizes=hist,
-            device="cpu",
+            device=device,
             dtype=dtype,
         )
         train_x = train_x.to(device)
@@ -372,7 +375,7 @@ def run(
     for step in tqdm(range(steps), disable=not verbose):
         if step % log_freq == 0:
             with torch.no_grad():
-                x_i, y_i = get_batch(
+                x_i, y_i = get_standard_multitask_batch(
                     n_tasks=n_tasks,
                     n=n,
                     Ss=Ss,
@@ -389,7 +392,7 @@ def run(
                 losses = loss_fn(y_i_pred, y_i).item()
 
                 for i in range(n_tasks):
-                    x_i, y_i = get_batch(
+                    x_i, y_i = get_standard_multitask_batch(
                         n_tasks=n_tasks,
                         n=n,
                         Ss=[Ss[i]],
@@ -442,7 +445,7 @@ def run(
                 ),
             )
             hist, _ = np.histogram(samples, bins=n_tasks, range=(0, n_tasks - 1))
-            x, y_target = get_batch(
+            x, y_target = get_standard_multitask_batch(
                 n_tasks=n_tasks,
                 n=n,
                 Ss=Ss,
