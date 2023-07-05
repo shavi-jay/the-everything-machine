@@ -226,4 +226,4 @@ cython_debug/
 # End of https://www.toptal.com/developers/gitignore/api/python,linux,macos,jupyternotebooks
 
 # Ignore everything in a wandb folder
-.wandb/
+wandb/
